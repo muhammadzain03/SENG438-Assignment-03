@@ -4,12 +4,6 @@
 **Course:** SENG 438 - Software Testing, Reliability, and Quality  
 **Group:** 08  
 
-| Student | Name |
-|---------|------|
-| Student 01 | Muhammad Zain |
-| Student 02 | Fateh Ali Syed Bukhari |
-| Student 03 | Yazin Abdul Majid |
-
 ---
 
 ## Overview
