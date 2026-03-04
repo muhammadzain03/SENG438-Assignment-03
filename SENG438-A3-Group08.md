@@ -24,6 +24,38 @@ The assignment is structured in three parts:
 
 ---
 
+## 1.1 Project Setup
+
+The following screenshots document the Eclipse project configuration used throughout this assignment.
+
+**Step 1 — Create a new Java project** (`JFreeChart_Lab3`) in Eclipse targeting JavaSE-1.8:
+
+![Step 1 - Create Java Project](media/1.jpg)
+
+**Step 2 — Configure the Java Build Path** by adding all required JARs (JFreeChart 1.0.19, JUnit Jupiter 4/5, Mockito, Hamcrest, etc.) via *Add External JARs*:
+
+![Step 2a - Build Path (Mac)](media/2.png)
+
+![Step 2b - Build Path (Windows)](media/2.jpg)
+
+**Step 3 — Verify the source package structure** contains `org.jfree.data` (and all other JFreeChart packages) under `src`:
+
+![Step 3 - Source Packages](media/3.jpg)
+
+**Step 4 — Import test files** (`DataUtilitiesTest.java` and `RangeTest.java`) from the Assignment 2 workspace into `src/org/jfree/data`:
+
+![Step 4 - Import Test Files](media/4.jpg)
+
+**Step 5 — Run tests with EclEmma** (Coverage As → JUnit Test) to confirm the baseline pass/fail count and inspect coverage metrics in the Coverage view:
+
+![Step 5 - Run Tests and Coverage](media/5.jpg)
+
+**Step 6 — Create new JUnit Jupiter test cases** using Eclipse's *New → JUnit Test Case* wizard, selecting *New JUnit Jupiter test* and setting the package to `org.jfree.data`:
+
+![Step 6 - New JUnit Test Case](media/6.png)
+
+---
+
 # 2 Manual Data-Flow Coverage Calculations for `DataUtilities.calculateColumnTotal` and `Range.contains`
 
 The two methods selected for manual DU-pair coverage analysis are:
@@ -159,7 +191,7 @@ Only **feasible** DU-pairs are listed. DU-pairs entirely within the dead-code se
 
 ### 2.1.5 DU-Pair Coverage per Test Case
 
-Six representative test cases from `DataUtilitiesMockTest.java` are traced (others are omitted for brevity but covered pairs are subsets of those shown):
+Six representative test cases from `DataUtilitiesTest.java` are traced (others are omitted for brevity but covered pairs are subsets of those shown):
 
 | DU# | Pair (DEF→USE) | T1 | T2 | T3 | T4 | T5 | T6 |
 |-----|---------------|----|----|----|----|----|----|
@@ -360,52 +392,249 @@ The Assignment 2 test suite achieves 100% DU-pair coverage for both analyzed met
 
 # 3 A Detailed Description of the Testing Strategy for the New Unit Tests
 
-> **Note:** This section is a rough draft.
+## 3.1 Objective
 
-## 3.1 Goal
+The objective of this test plan is to design and implement additional unit tests for the following classes in the JFreeChart library:
 
-The goal of the new test cases is to increase coverage of both `DataUtilities` and `Range` to meet or exceed the minimums: **90% statement**, **70% branch**, and **60% condition** coverage.
+- `org.jfree.data.DataUtilities`
+- `org.jfree.data.Range`
 
-## 3.2 Coverage Gap Analysis (from Assignment 2 baseline)
+The goal is to increase the structural test coverage of the system under test (SUT) using **JUnit 5**, while deriving all test oracles from the requirements specified in the Javadocs. The developed test suite aims to achieve the following minimum coverage requirements:
 
-After running EclEmma on the Assignment 2 test suite:
+| Coverage Metric | Required |
+|----------------|----------|
+| Statement Coverage | ≥ 90% |
+| Branch Coverage | ≥ 70% |
+| Condition Coverage | ≥ 60% |
+
+Coverage is measured using **EclEmma** integrated with the Eclipse IDE.
+
+---
+
+## 3.2 System Under Test
+
+### 3.2.1 DataUtilities
+
+`DataUtilities` provides static helper methods for working with numerical datasets. Based on the Javadoc, the following **9 public methods** are in scope for coverage:
+
+| Method | Description (per Javadoc) |
+|--------|--------------------------|
+| `equal(double[][], double[][])` | Tests two 2D arrays for equality; handles null inputs |
+| `clone(double[][])` | Returns a deep clone; null rows are preserved as null |
+| `calculateColumnTotal(Values2D, int)` | Sums all non-null values in one column over all rows |
+| `calculateColumnTotal(Values2D, int, int[])` | Sums non-null values in a column for specified rows only |
+| `calculateRowTotal(Values2D, int)` | Sums all non-null values in one row over all columns |
+| `calculateRowTotal(Values2D, int, int[])` | Sums non-null values in a row for specified columns only |
+| `createNumberArray(double[])` | Converts `double[]` to `Number[]` |
+| `createNumberArray2D(double[][])` | Converts `double[][]` to `Number[][]` |
+| `getCumulativePercentages(KeyedValues)` | Computes cumulative percentages as values in [0.0, 1.0] |
+
+> **Note:** The Assignment 2 baseline only covered `calculateColumnTotal(Values2D, int)`, `calculateRowTotal(Values2D, int)`, `createNumberArray`, `createNumberArray2D`, and `getCumulativePercentages`. The four methods `equal`, `clone`, and both overloaded variants were entirely untested (0% coverage).
+
+Tests include both **Mockito-based** tests (mocking `Values2D` and `KeyedValues` interfaces) and **non-mocking** tests (for array-based methods).
+
+### 3.2.2 Range
+
+`Range` represents an immutable numerical interval `[lower, upper]`. Based on the Javadoc, the following methods are in scope:
+
+| Method | Description (per Javadoc) |
+|--------|--------------------------|
+| `getLowerBound()` | Returns the lower bound; throws `IllegalArgumentException` if lower > upper |
+| `getUpperBound()` | Returns the upper bound; same guard as above |
+| `getLength()` | Returns `upper - lower`; same guard |
+| `getCentralValue()` | Returns `lower/2 + upper/2` |
+| `contains(double)` | Returns true if value ∈ [lower, upper] |
+| `intersects(double, double)` | Returns true if [b0, b1] overlaps with this range |
+| `intersects(Range)` | Delegates to `intersects(double, double)` |
+| `constrain(double)` | Returns closest value in range to the given value |
+| `combine(Range, Range)` | Returns spanning range; null-safe |
+| `combineIgnoringNaN(Range, Range)` | Spanning range ignoring NaN bounds; returns null if all NaN |
+| `expandToInclude(Range, double)` | Expands range to include a value |
+| `expand(Range, double, double)` | Adds lower/upper margins as fractions of the range length |
+| `shift(Range, double)` | Shifts by delta; delegates to `shift(Range, double, false)` |
+| `shift(Range, double, boolean)` | Shifts; if `allowZeroCrossing=false`, bounds are clamped at 0 |
+| `scale(Range, double)` | Multiplies both bounds by a non-negative factor |
+| `equals(Object)` | Field-by-field equality on lower and upper |
+| `isNaNRange()` | Returns true if both bounds are `Double.NaN` |
+| `hashCode()` | Standard hashCode based on both bounds |
+| `toString()` | Returns `"Range[lower,upper]"` |
+
+> **Note:** The Assignment 2 baseline only covered `getLowerBound`, `getUpperBound`, `getLength`, `getCentralValue`, `contains`, and the constructor — 6 of 23 methods. The remaining 17 methods had 0% coverage.
+
+---
+
+## 3.3 Coverage Gap Analysis (Assignment 2 Baseline)
 
 | Class | Instruction | Branch | Method |
-|-------|------------|--------|--------|
-| DataUtilities | 48.0% | 35.9% | 50.0% |
-| Range | 14.5% | 13.4% | 26.1% |
+|-------|-------------|--------|--------|
+| `DataUtilities` | 48.0% | 35.9% | 50.0% |
+| `Range` | 14.5% | 13.4% | 26.1% |
 
-Both classes fall well short of the targets. The primary gaps are:
-- **DataUtilities**: The overloaded variants `calculateColumnTotal(Values2D, int, int[])`, `calculateRowTotal(Values2D, int, int[])`, `clone(double[][])`, and `equal(double[][], double[][])` are entirely uncovered.
-- **Range**: Only 6 of 23 methods were touched by the A2 tests (`contains`, `getCentralValue`, `getLowerBound`, `getUpperBound`, `getLength`, and the constructor). All other methods — `intersects`, `constrain`, `combine`, `combineIgnoringNaN`, `expandToInclude`, `expand`, `shift`, `scale`, `equals`, `hashCode`, `toString`, etc. — have 0% coverage.
+Both classes are well below the targets. New tests are needed to close these gaps.
 
-## 3.3 Test Plan
+---
+
+## 3.4 Testing Strategy
+
+New test cases were designed using a combination of the following techniques, all guided by the Javadoc specification (not the buggy implementation):
+
+### Equivalence Class Partitioning (ECP)
+
+Inputs were grouped into logical partitions where behaviour is expected to be uniform:
+
+- **Range:** values inside / outside / at the boundary of the range; null ranges; NaN ranges; positive, negative, and mixed-sign ranges.
+- **DataUtilities:** empty arrays; single-element arrays; multi-element arrays; arrays with null entries; arrays with special values (`NaN`, `Double.MAX_VALUE`, very small values).
+
+### Boundary Value Analysis (BVA)
+
+Boundary cases were tested at the limits of valid inputs:
+
+- Lower and upper bounds of a range (inclusive).
+- Values just inside and just outside bounds.
+- Zero-length arrays; single-element arrays.
+- `null` inputs where permitted by Javadoc.
+
+### Structural Coverage Testing
+
+Additional tests were designed specifically by inspecting EclEmma's red (uncovered) lines in the source code, targeting:
+
+- Both true and false outcomes of every `if` statement.
+- Loop bodies executing 0, 1, and multiple times.
+- Dead-code paths identified as infeasible (e.g., `r2 > rowCount` in `calculateColumnTotal`).
+- Exception-throwing paths (e.g., `IllegalArgumentException` in `scale`, null guard in `clone`).
+
+---
+
+## 3.5 Test Design Conventions
+
+Each test case is implemented as a **separate `@Test` method**, each exercising a single distinct control-flow path. This ensures that EclEmma's coverage metrics meaningfully reflect which paths were exercised.
+
+**Naming convention:**
+
+```
+methodName_condition_expectedOutcome()
+```
+
+Examples:
+- `calculateColumnTotal_nullData_throwsNullPointerException()`
+- `intersects_overlappingRangeAboveLower_returnsTrue()`
+- `scale_negativeFactor_throwsIllegalArgumentException()`
+
+---
+
+## 3.6 Mocking Strategy
+
+For methods in `DataUtilities` that accept `Values2D` or `KeyedValues` as input, **Mockito** is used to create mock objects, allowing precise control over:
+
+- Row and column counts (`getRowCount()`, `getColumnCount()`).
+- Individual cell values (`getValue(row, col)`), including `null` returns.
+- Item counts and key/value pairs for `KeyedValues`.
+
+This enables testing edge cases such as invalid indices, null values, and out-of-bounds access without needing a real dataset implementation.
+
+Array-based methods (`equal`, `clone`, `createNumberArray`, `createNumberArray2D`) are tested directly without mocks.
+
+---
+
+## 3.7 Test Responsibilities
 
 | Team Member | Assigned Methods (new tests) |
 |-------------|------------------------------|
-| Muhammad Zain | `Range.intersects`, `Range.constrain`, `Range.combine`, `Range.equals`, `Range.hashCode`, `Range.toString` |
-| Fateh Ali Syed Bukhari | `Range.combineIgnoringNaN`, `Range.expandToInclude`, `Range.expand`, `Range.shift`, `Range.scale` |
-| Yazin Abdul Majid | `DataUtilities.equal`, `DataUtilities.clone`, `DataUtilities.calculateColumnTotal(Values2D, int, int[])`, `DataUtilities.calculateRowTotal(Values2D, int, int[])` |
+| Muhammad Zain | `Range.intersects`, `Range.constrain`, `Range.combine`, `Range.equals`, `Range.hashCode`, `Range.toString`, `Range.isNaNRange` |
+| Fateh Ali Syed Bukhari | `Range.combineIgnoringNaN`, `Range.expandToInclude`, `Range.expand`, `Range.shift(Range,double)`, `Range.shift(Range,double,boolean)`, `Range.scale` |
+| Yazin Abdul Majid | `DataUtilities.equal`, `DataUtilities.clone`, `DataUtilities.calculateColumnTotal(Values2D,int,int[])`, `DataUtilities.calculateRowTotal(Values2D,int,int[])` |
 
-Each team member will:
-1. Read the Javadoc specification for their assigned methods.
-2. Identify all decision branches in the source code.
-3. Write separate `@Test` methods per path/boundary (not one test per method).
-4. Run EclEmma after each addition to verify coverage improvement.
-5. Peer-review each other's tests for correctness and clarity.
+Each team member:
+1. Reads the Javadoc specification for their assigned methods.
+2. Identifies all decision branches in the source code.
+3. Writes separate `@Test` methods per path/boundary.
+4. Runs EclEmma after each addition to verify coverage improvement.
+5. Peer-reviews another member's tests for correctness.
 
-## 3.4 Peer Review Process
+---
 
-After individual completion, each group member will review another member's tests by:
-- Verifying that each test has a clear name describing the input scenario and expected output.
-- Checking that the assertion matches the Javadoc specification (not the buggy implementation).
-- Flagging any test that either cannot fail (always passes trivially) or always fails (testing a bug rather than a requirement).
+## 3.8 Peer Review Process
+
+After individual completion, each group member reviewed another member's test cases, checking for:
+
+- Correct test oracle: assertions match the Javadoc specification, not the (potentially buggy) implementation.
+- Adequate naming: test name clearly describes the input scenario and expected output.
+- Path completeness: both `true` and `false` branches of each decision are covered.
+- No trivially passing or always-failing tests.
+
+Any corrections identified during peer review were incorporated into the final test suite.
+
+---
+
+## 3.9 Code Coverage Results
+
+After developing the enhanced test suite for `DataUtilities` and `Range`, code coverage metrics were collected using **EclEmma** in Eclipse. The full analysis of coverage results, tool limitations, and metric rationale is presented in Sections 5 and 6.
+
+### Table 1 — Class-Level Coverage Summary (New Test Suite)
+
+| Class | Statement (Instruction) Coverage | Branch Coverage | Method Coverage |
+|-------|----------------------------------|----------------|----------------|
+| `DataUtilities` | **88.1%** (349 / 396) | **78.1%** (50 / 64) | **90.0%** (9 / 10) |
+| `Range` | **100.0%** (560 / 560) | **92.7%** (76 / 82) | **100.0%** (23 / 23) |
+
+> **Note on DataUtilities statement coverage:** The 88.1% figure is 1.9 percentage points below the 90% target. The remaining 47 missed instructions are concentrated in the dead-code second loop of `calculateColumnTotal` (`r2 > rowCount` — an injected bug that is permanently false) and in a few exception-guard branches. These paths are infeasible to cover through any normally constructed call and are documented in Section 2.1.4.
+
+---
+
+### DataUtilities — Coverage Screenshots
+
+#### Statement (Instruction) Coverage — 88.1%
+
+![DataUtilities Statement Coverage](media/Coverages/Statement%20Coverage%20-%20DataUtilities.png)
+
+#### Branch Coverage — 78.1%
+
+![DataUtilities Branch Coverage](media/Coverages/Branch%20Coverage%20-%20DataUtilities.png)
+
+#### Method Coverage — 90.0%
+
+![DataUtilities Method Coverage](media/Coverages/Method%20Coverage%20-%20DataUtilities.png)
+
+---
+
+### Range — Coverage Screenshots
+
+#### Statement (Instruction) Coverage — 100.0%
+
+![Range Statement Coverage](media/Coverages/Statement%20Coverage%20-%20Range.png)
+
+#### Branch Coverage — 92.7%
+
+![Range Branch Coverage](media/Coverages/Branch%20Coverage%20-%20Range.png)
+
+#### Method Coverage — 100.0%
+
+![Range Method Coverage](media/Coverages/Method%20Coverage%20-%20Range.png)
+
+---
+
+### Coverage vs. Targets
+
+| Class | Required Statement | Achieved | Required Branch | Achieved | Required Method | Achieved |
+|-------|--------------------|----------|-----------------|----------|-----------------|----------|
+| `DataUtilities` | ≥ 90% | 88.1% ⚠ | ≥ 70% | 78.1% ✅ | ≥ 60% | 90.0% ✅ |
+| `Range` | ≥ 90% | 100.0% ✅ | ≥ 70% | 92.7% ✅ | ≥ 60% | 100.0% ✅ |
+
+### Coverage Interpretation
+
+Additional tests were introduced to trigger specific control-flow paths including:
+
+- Boundary values (at, just inside, and just outside range bounds).
+- Invalid inputs (`null` data, negative scaling factors, out-of-bounds indices).
+- Special floating-point values (`Double.NaN`, `Double.MAX_VALUE`, very small values).
+- Loop edge cases (empty tables with 0 rows/columns; tables with 1 row/column; large tables).
+- Reflection-based tests to force the infeasible exception-guard branches in `Range.getLowerBound()`, `Range.getUpperBound()`, and `Range.getLength()` (which require `lower > upper`, a state impossible to reach through normal construction).
+
+Several test cases **intentionally fail**, as the SUT contains known defects injected for the assignment. All test oracles are derived strictly from the Javadoc specifications, not from the actual (buggy) implementation behaviour. Failing tests therefore represent **specification violations** in the SUT, not errors in the test suite.
 
 ---
 
 # 4 A High-Level Description of Five Selected Test Cases Designed Using Coverage Information
-
-> **Note:** This section is a rough draft. Final test names and exact coverage improvements will be updated after running the new suite.
 
 The following five test cases were specifically designed by examining EclEmma's red (uncovered) lines in the source code:
 
@@ -642,10 +871,6 @@ Instruction coverage measures whether each bytecode instruction was executed at 
 
 Branch coverage is low primarily because Assignment 2 used a **black-box, requirements-based approach** targeting only five methods each for `DataUtilities` and `Range`. The overloaded and utility methods (`equal`, `clone`, `calculateColumnTotal(…, int[])`, and 17 out of 23 methods in `Range`) received zero tests. Each unexercised method contributes 0% to the branch total, dragging the overall percentage down significantly. Additionally, even the methods that were tested contain dead-code branches (e.g., the `r2 > rowCount` loop in `calculateColumnTotal`) which are impossible to cover regardless.
 
-### Why many classes and methods show 0%
-
-Because the test suite from Assignment 2 was scoped to **10 specific methods** across the two SUT classes, and EclEmma is run against the full compiled project (all of `org.jfree`), every class that was not the target of any test method shows 0% across all metrics. Within `DataUtilities`, four of nine public methods were never called. Within `Range`, 17 of 23 methods were never entered. This is expected at the Assignment 2 baseline — the coverage improvement task (Section 3.3) is designed to close these gaps.
-
 ---
 
 # 6 Pros and Cons of Coverage Tools Used and Metrics Reported
@@ -698,8 +923,6 @@ We selected **instruction**, **branch**, and **method** coverage as our three re
 
 # 7 A Comparison of Requirements-Based and Coverage-Based Test Generation
 
-> **Note:** This section is a rough draft.
-
 **Requirements-based test generation** (used in Assignment 2) derives test cases entirely from the specification — in our case, the Javadoc API documentation. The tester treats the code as a black box. The key advantage is that tests are grounded in the intended behaviour, not the implementation; defects introduced by the developer (including dead code or incorrect branches) do not bias test design. The main disadvantage is that without seeing the code, a tester may miss entire execution paths that are not implied by the Javadoc, leading to low structural coverage.
 
 **Coverage-based test generation** (used in this assignment) inspects the source code to identify uncovered statements, branches, or paths and designs test cases to exercise them. The advantage is systematic completeness — no branch is left dark after enough iterations. The disadvantage is that tests written solely to achieve coverage metrics may lose sight of the specification: a test designed to cover a buggy branch is not a correct test, and chasing 100% coverage can lead to meaningless tests that inflate metrics without validating real requirements.
@@ -709,8 +932,6 @@ In practice, a mature test strategy combines both approaches: requirements-based
 ---
 
 # 8 A Discussion on How the Team Work and Effort Was Divided and Managed
-
-> **Note:** This section is a rough draft.
 
 The work was divided into three roughly equal streams aligned with each team member's experience from Assignment 2:
 
@@ -724,21 +945,19 @@ Team coordination was managed through WhatsApp group messaging for day-to-day up
 
 # 9 Difficulties Encountered, Challenges Overcome, and Lessons Learned
 
-> **Note:** This section is a rough draft.
+**EclEmma metric limitations:** EclEmma does not support condition (MC/DC) coverage (detailed in Section 6.1). After briefly investigating CodeCover (offline) and Cobertura (requires Ant/Maven), we substituted method coverage as the third metric per the assignment instructions.
 
-**EclEmma metric limitations:** Our first challenge was that EclEmma does not support condition (MC/DC) coverage. After briefly investigating CodeCover (offline) and Cobertura (requires Ant/Maven build), we accepted the assignment's suggestion to substitute method coverage as the third metric.
+**Intentional defects and dead code:** The `r2 > rowCount` loop in `calculateColumnTotal` is dead code — its body is unreachable by any test (analysed in Section 2.1.4). This reinforced the concept of **infeasible paths** and the importance of documenting them rather than chasing artificial coverage numbers.
 
-**Intentional defects and dead code:** Several methods in both `DataUtilities` and `Range` contain intentionally injected bugs. The most notable was the `r2 > rowCount` loop in `calculateColumnTotal` — a dead-code loop that EclEmma correctly marks as uncovered. Writing a test to cover it is impossible by design, which taught us the concept of **infeasible paths** and how to communicate them in a report rather than forcing artificial coverage.
+**Infeasible branches in `Range` requiring reflection:** The defensive guard `if (lower > upper) throw ...` in `getLowerBound()`, `getUpperBound()`, and `getLength()` is permanently unreachable through normal construction because the `Range` constructor enforces `lower ≤ upper`. These instructions caused instruction coverage to stall at 88.8% even after exhaustive black-box tests. The solution was to use Java Reflection (`Field.setAccessible(true)`) to forcibly corrupt a `Range` object's `lower` field after construction, making it artificially greater than `upper`. This allowed the guard to trigger and the branches to be counted as covered. While unconventional, this approach is justified: it covers real bytecode that exists in the class, documents the invariant being protected, and does not alter the class under test.
 
-**Scoping the Coverage view:** EclEmma shows all packages in the project. Filtering down to just `org.jfree.data.DataUtilities` and `org.jfree.data.Range` required manually collapsing other packages — a minor but time-consuming inconvenience.
+**Scoping the Coverage view:** EclEmma shows all packages in the project, so isolating `org.jfree.data.DataUtilities` and `org.jfree.data.Range` required manually collapsing unrelated packages — a minor but time-consuming inconvenience.
 
-**Lesson learned:** Coverage metrics are necessary but not sufficient for test quality. A test that covers a dead branch or a buggy branch counts as "covered" but provides no assurance of correctness. The oracle (what you assert) matters as much as the path you traverse.
+**Lesson learned:** Coverage metrics are necessary but not sufficient for test quality. A test that covers a dead branch counts as "covered" but provides no assurance of correctness. The oracle (what you assert) matters as much as the path you traverse.
 
 ---
 
 # 10 Comments/Feedback on the Lab Itself
-
-> **Note:** This section is a rough draft.
 
 The lab was well-structured and a natural extension of Assignment 2. Having the same SUT and test files allowed us to focus on the new concepts (coverage metrics and data-flow analysis) without re-learning the codebase.
 
