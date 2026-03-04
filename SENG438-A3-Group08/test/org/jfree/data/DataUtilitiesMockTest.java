@@ -311,6 +311,63 @@ public class DataUtilitiesMockTest {
 		assertEquals(4.0, result, 0.0000001);
 	}
 
+	@Test
+	public void calculateColumnTotal_withValidRows_ignoresOutOfBoundsRows() {
+		Values2D mockData = mock(Values2D.class);
+
+		when(mockData.getRowCount()).thenReturn(2);
+		when(mockData.getValue(0, 0)).thenReturn(1.0);
+		when(mockData.getValue(1, 0)).thenReturn(2.0);
+
+		int[] validRows = {0, 5}; // 5 is out of bounds and should be ignored
+
+		double result = DataUtilities.calculateColumnTotal(mockData, 0, validRows);
+
+		assertEquals(1.0, result, 0.0000001);
+	}
+
+	@Test
+	public void calculateRowTotal_withValidColumns_ignoresOutOfBoundsColumns() {
+		Values2D mockData = mock(Values2D.class);
+
+		when(mockData.getColumnCount()).thenReturn(2);
+		when(mockData.getValue(0, 0)).thenReturn(1.0);
+		when(mockData.getValue(0, 1)).thenReturn(2.0);
+
+		int[] validCols = {0, 3}; // 3 is out of bounds and should be ignored
+
+		double result = DataUtilities.calculateRowTotal(mockData, 0, validCols);
+
+		assertEquals(1.0, result, 0.0000001);
+	}
+
+	// ------------------------------------
+	// clone(double[][])
+	// ------------------------------------
+
+	@Test
+	public void clone_nullSource_throwsIllegalArgumentException() {
+		assertThrows(IllegalArgumentException.class, () -> {
+			DataUtilities.clone(null);
+		});
+	}
+
+	@Test
+	public void clone_copiesValuesAndPreservesNullRows() {
+		double[][] source = {
+				{1.0, 2.0},
+				null,
+				{3.0}
+		};
+
+		double[][] copy = DataUtilities.clone(source);
+
+		assertNotSame(source, copy);
+		assertArrayEquals(source[0], copy[0], 0.0000001);
+		assertNull(copy[1]);
+		assertArrayEquals(source[2], copy[2], 0.0000001);
+	}
+
 	// ------------------------------------
 	// calculateRowTotal (Mockito-based)
 	// ------------------------------------
