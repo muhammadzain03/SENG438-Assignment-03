@@ -235,6 +235,82 @@ public class DataUtilitiesMockTest {
 		assertTrue(result, "equal(null, null) should return true");
 	}
 
+	@Test
+	public void equal_oneNull_returnsFalse() {
+		double[][] a = {{1.0, 2.0}};
+		double[][] b = null;
+
+		boolean result = DataUtilities.equal(a, b);
+
+		assertFalse(result, "equal(nonNull, null) should return false");
+	}
+
+	@Test
+	public void equal_differentDimensions_returnsFalse() {
+		double[][] a = {{1.0}, {2.0}};
+		double[][] b = {{1.0}};
+
+		boolean result = DataUtilities.equal(a, b);
+
+		assertFalse(result, "Arrays with different row counts should not be equal");
+	}
+
+	@Test
+	public void equal_sameDimensionsDifferentValues_returnsFalse() {
+		double[][] a = {{1.0, 2.0}};
+		double[][] b = {{1.0, 3.0}};
+
+		boolean result = DataUtilities.equal(a, b);
+
+		assertFalse(result, "Arrays with different contents should not be equal");
+	}
+
+	@Test
+	public void equal_identicalArrays_returnsTrue() {
+		double[][] a = {{1.0, 2.0}, {3.0, 4.0}};
+		double[][] b = {{1.0, 2.0}, {3.0, 4.0}};
+
+		boolean result = DataUtilities.equal(a, b);
+
+		assertTrue(result, "Identical arrays should be equal");
+	}
+
+	// ------------------------------------
+	// calculateColumnTotal / calculateRowTotal with validRows/validCols
+	// ------------------------------------
+
+	@Test
+	public void calculateColumnTotal_withValidRows_sumsOnlyValidRows() {
+		Values2D mockData = mock(Values2D.class);
+
+		when(mockData.getRowCount()).thenReturn(3);
+		when(mockData.getValue(0, 0)).thenReturn(1.0);
+		when(mockData.getValue(1, 0)).thenReturn(2.0);
+		when(mockData.getValue(2, 0)).thenReturn(3.0);
+
+		int[] validRows = {0, 2};
+
+		double result = DataUtilities.calculateColumnTotal(mockData, 0, validRows);
+
+		assertEquals(4.0, result, 0.0000001);
+	}
+
+	@Test
+	public void calculateRowTotal_withValidColumns_sumsOnlyValidColumns() {
+		Values2D mockData = mock(Values2D.class);
+
+		when(mockData.getColumnCount()).thenReturn(3);
+		when(mockData.getValue(0, 0)).thenReturn(1.0);
+		when(mockData.getValue(0, 1)).thenReturn(2.0);
+		when(mockData.getValue(0, 2)).thenReturn(3.0);
+
+		int[] validCols = {0, 2};
+
+		double result = DataUtilities.calculateRowTotal(mockData, 0, validCols);
+
+		assertEquals(4.0, result, 0.0000001);
+	}
+
 	// ------------------------------------
 	// calculateRowTotal (Mockito-based)
 	// ------------------------------------
