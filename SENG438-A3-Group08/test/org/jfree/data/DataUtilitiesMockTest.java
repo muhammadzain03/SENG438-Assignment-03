@@ -222,6 +222,20 @@ public class DataUtilitiesMockTest {
 	}
 
 	// ------------------------------------
+	// equal(double[][], double[][])
+	// ------------------------------------
+
+	@Test
+	public void equal_bothNull_returnsTrue() {
+		double[][] a = null;
+		double[][] b = null;
+
+		boolean result = DataUtilities.equal(a, b);
+
+		assertTrue(result, "equal(null, null) should return true");
+	}
+
+	// ------------------------------------
 	// calculateRowTotal (Mockito-based)
 	// ------------------------------------
 
