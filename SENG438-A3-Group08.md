@@ -32,7 +32,7 @@ The two methods selected for manual DU-pair coverage analysis are:
 
 For each method we produce: (a) a control-flow graph, (b) def-use sets per statement, (c) all DU-pairs per variable, (d) per-test DU-pair coverage, and (e) the overall DU-pair coverage percentage.
 
-> The control-flow diagram for both methods is shown below (see *Figure 1* in Section 2.1.2 and *Figure 2* in Section 2.2.2).
+> The control-flow diagram for both methods is shown once in Section 2.1.2 (*Figure 1*); Section 2.2.2 refers back to it (*Figure 2* = lower part of the same diagram).
 
 ---
 
@@ -71,7 +71,7 @@ public static double calculateColumnTotal(Values2D data, int column) {
 
 **Figure 1** — Control-flow graph for `DataUtilities.calculateColumnTotal(Values2D data, int column)` (top) and `Range.contains(double value)` (bottom). DEF/USE annotations are shown on each node; the dead-code second loop (S10/S11) is highlighted.
 
-![Control-flow diagram for calculateColumnTotal and contains](media/control-flow-diagram.png)
+![Control-flow diagram for calculateColumnTotal and contains](media/Control%20Flow%20Diagram.png)
 
 *ASCII representation (for reference):*
 
@@ -243,9 +243,7 @@ public boolean contains(double value) {
 
 ### 2.2.2 Control-Flow Graph
 
-**Figure 2** — Control-flow graph for `Range.contains(double value)` (lower section of the same diagram as Figure 1). Entry state and DEF/USE for *value*, *lower*, and *upper* are shown.
-
-![Control-flow diagram for Range.contains](media/control-flow-diagram.png)
+**Figure 2** — Control-flow graph for `Range.contains(double value)` (lower section of **Figure 1** above). Entry state and DEF/USE for *value*, *lower*, and *upper* are shown. See the single control-flow diagram in Section 2.1.2.
 
 *ASCII representation (for reference):*
 
