@@ -26,180 +26,337 @@ The assignment is structured in three parts:
 
 # 2 Manual Data-Flow Coverage Calculations for `DataUtilities.calculateColumnTotal` and `Range.contains`
 
-> **Note:** This section is a rough draft. Full data-flow graphs, def-use sets, DU-pair tables, and per-test coverage traces will be completed here.
+The two methods selected for manual DU-pair coverage analysis are:
+1. `DataUtilities.calculateColumnTotal(Values2D data, int column)` — mandatory per assignment instructions
+2. `Range.contains(double value)` — chosen from the Range class because it is compact, has clear branching, and has extensive test coverage from Assignment 2
+
+For each method we produce: (a) a control-flow graph, (b) def-use sets per statement, (c) all DU-pairs per variable, (d) per-test DU-pair coverage, and (e) the overall DU-pair coverage percentage.
+
+> The control-flow diagram for both methods is shown below (see *Figure 1* in Section 2.1.2 and *Figure 2* in Section 2.2.2).
+
+---
 
 ## 2.1 `DataUtilities.calculateColumnTotal(Values2D data, int column)`
 
-### Source Code Under Analysis
+### 2.1.1 Annotated Source Code
+
+The statements are labelled S1–S12 for use throughout this analysis. The second `for`-loop (S10–S11) is **dead code**: its condition `r2 > rowCount` is always `false` since `r2` initialises to `0` and `rowCount ≥ 0`.
 
 ```java
 public static double calculateColumnTotal(Values2D data, int column) {
-    ParamChecks.nullNotPermitted(data, "data");  // line 1
-    double total = 0.0;                           // line 2
-    int rowCount = data.getRowCount();            // line 3
-    for (int r = 0; r < rowCount; r++) {          // line 4
-        Number n = data.getValue(r, column);      // line 5
-        if (n != null) {                          // line 6
-            total += n.doubleValue();             // line 7
-        }
-    }
-    for (int r2 = 0; r2 > rowCount; r2++) {       // line 8 (dead code – bug)
-        Number n = data.getValue(r2, column);     // line 9
-        if (n != null) {                          // line 10
-            total += n.doubleValue();             // line 11
-        }
-    }
-    return total;                                  // line 12
+    /* S1  */ ParamChecks.nullNotPermitted(data, "data");
+    /* S2  */ double total = 0.0;
+    /* S3  */ int rowCount = data.getRowCount();
+    /* S4  */ for (int r = 0;      // S4 = loop init:  r = 0
+    /* S5  */          r < rowCount;   // S5 = loop cond:  r < rowCount  [predicate]
+    /* S9  */          r++) {          // S9 = loop incr:  r++
+    /* S6  */     Number n = data.getValue(r, column);
+    /* S7  */     if (n != null) {                        // [predicate]
+    /* S8  */         total += n.doubleValue();
+                  }
+               }
+    // ── DEAD CODE (intentional bug: r2 > rowCount is always false) ──
+    /* S10 */ for (int r2 = 0; r2 > rowCount; r2++) {    // S10 = init; S11 = cond
+    /* S11 */     Number n = data.getValue(r2, column);   // never reached
+                  if (n != null) { total += n.doubleValue(); }
+               }
+    // ─────────────────────────────────────────────────────────────────
+    /* S12 */ return total;
 }
 ```
 
-### Data-Flow Graph
+---
+
+### 2.1.2 Control-Flow Graph
+
+**Figure 1** — Control-flow graph for `DataUtilities.calculateColumnTotal(Values2D data, int column)` (top) and `Range.contains(double value)` (bottom). DEF/USE annotations are shown on each node; the dead-code second loop (S10/S11) is highlighted.
+
+![Control-flow diagram for calculateColumnTotal and contains](media/control-flow-diagram.png)
+
+*ASCII representation (for reference):*
 
 ```
-[1] nullNotPermitted
-     ↓
-[2] total = 0.0
-     ↓
-[3] rowCount = data.getRowCount()
-     ↓
-[4] r = 0; r < rowCount?  ──No──→ [8] r2 = 0; r2 > rowCount? ──No──→ [12] return total
-     │Yes
-     ↓
-[5] n = data.getValue(r, column)
-     ↓
-[6] n != null?  ──No──→ [4] r++
-     │Yes
-     ↓
-[7] total += n.doubleValue()  ──→ [4] r++
+  [ENTRY] data, column (parameters)
+        |
+       [S1] nullNotPermitted(data, "data")
+        |
+       [S2] total = 0.0
+        |
+       [S3] rowCount = data.getRowCount()
+        |
+       [S4] r = 0
+        |
+   ┌───[S5] r < rowCount? ───────────────────────┐
+   │         │                                   │ (false)
+   │       (true)                                │
+   │         │                                [S10] r2 = 0  ← dead code
+   │        [S6] n = data.getValue(r, column)  [S11] r2 > rowCount? → always FALSE
+   │         │                                    │
+   │        [S7] n != null?          ┌────────────┘ (immediately false)
+   │        /       \                │
+   │    (true)     (false)          [S12] return total
+   │      /           \               │
+   │    [S8]       (skip)          [EXIT]
+   │  total += n.dV()
+   │      \           /
+   │       ──────────
+   │            │
+   │           [S9] r++
+   └────────────┘  (back-edge to S5)
 ```
-(The second loop at line 8 is dead code because `r2 > rowCount` is false when `r2 = 0` and `rowCount ≥ 0`.)
 
-### Def-Use Sets per Statement
+**CFG Edges (reachable):**
+S1→S2, S2→S3, S3→S4, S4→S5, S5→S6 (true), S5→S10 (false), S6→S7, S7→S8 (true), S7→S9 (false), S8→S9, S9→S5 (back-edge), S10→S11, S11→S12 (always false, dead body), S12→EXIT
 
-| Line | Statement | DEF | USE |
-|------|-----------|-----|-----|
-| 1 | `nullNotPermitted(data, "data")` | — | data |
-| 2 | `total = 0.0` | total | — |
-| 3 | `rowCount = data.getRowCount()` | rowCount | data |
-| 4 | `r = 0` (init) | r | — |
-| 4 | `r < rowCount` (condition) | — | r, rowCount |
-| 4 | `r++` (update) | r | r |
-| 5 | `n = data.getValue(r, column)` | n | data, r, column |
-| 6 | `n != null` | — | n |
-| 7 | `total += n.doubleValue()` | total | total, n |
-| 8 | `r2 = 0` (init) | r2 | — |
-| 8 | `r2 > rowCount` (condition) | — | r2, rowCount |
-| 12 | `return total` | — | total |
+---
 
-### All DU-Pairs per Variable
+### 2.1.3 Def-Use Sets per Statement
 
-| Variable | DEF (line) | USE (line) | Type |
-|----------|-----------|-----------|------|
-| data | param | 1 | c-use |
-| data | param | 3 | c-use |
-| data | param | 5 | c-use |
-| total | 2 | 7 (c-use) | c-use |
-| total | 2 | 12 | c-use |
-| total | 7 | 7 (c-use) | c-use |
-| total | 7 | 12 | c-use |
-| rowCount | 3 | 4 (p-use) | p-use |
-| rowCount | 3 | 8 (p-use) | p-use |
-| r | 4-init | 4-cond (p-use) | p-use |
-| r | 4-init | 5 | c-use |
-| r | 4-update | 4-cond (p-use) | p-use |
-| r | 4-update | 5 | c-use |
-| n | 5 | 6 (p-use) | p-use |
-| n | 5 | 7 | c-use |
-| column | param | 5 | c-use |
+| Node | Statement | DEF | USE (c-use) | USE (p-use) |
+|------|-----------|-----|-------------|-------------|
+| S1 | `nullNotPermitted(data, "data")` | — | data | — |
+| S2 | `double total = 0.0` | total | — | — |
+| S3 | `int rowCount = data.getRowCount()` | rowCount | data | — |
+| S4 | `r = 0` (loop init) | r | — | — |
+| S5 | `r < rowCount` (loop condition) | — | — | r, rowCount |
+| S6 | `n = data.getValue(r, column)` | n | data, r, column | — |
+| S7 | `if (n != null)` (predicate) | — | — | n |
+| S8 | `total += n.doubleValue()` | total | total, n | — |
+| S9 | `r++` (loop increment) | r | r | — |
+| S10 | `r2 = 0` *(dead)* | r2 | — | — |
+| S11 | `r2 > rowCount` *(dead – always false)* | — | — | r2, rowCount |
+| S12 | `return total` | — | total | — |
 
-### DU-Pair Coverage per Test Case
+---
 
-| Test Case | data | total (2→12) | total (2→7) | rowCount | r (4→5) | n (5→6) | n (5→7) | Coverage |
-|-----------|------|-------------|------------|---------|---------|---------|---------|---------|
-| `calculateColumnTotal_validData_validColumn` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | All main pairs |
-| `calculateColumnTotal_invalidColumn_returnsZero` | ✓ | ✓ | — | ✓ | — | — | — | Partial |
-| `calculateColumnTotal_nullData_throwsNPE` | ✓ | — | — | — | — | — | — | Only line 1 |
-| `calculateColumnTotal_emptyTable_returnsZero` | ✓ | ✓ | — | ✓ | — | — | — | Partial |
+### 2.1.4 All DU-Pairs per Variable
 
-### DU-Pair Coverage Calculation
+Only **feasible** DU-pairs are listed. DU-pairs entirely within the dead-code second loop are marked separately as infeasible and excluded from the coverage calculation.
 
-- Total DU-pairs (reachable, excluding dead code loop): **15**
-- DU-pairs covered by test suite: **11**
-- **DU-Pair Coverage = 11 / 15 = 73.3%**
+| # | Variable | DEF at | USE at | Use Type | Feasible? | Notes |
+|---|----------|--------|--------|----------|-----------|-------|
+| 1 | `data` | param | S1 | c-use | ✅ | |
+| 2 | `data` | param | S3 | c-use | ✅ | |
+| 3 | `data` | param | S6 | c-use | ✅ | Only when first loop body executes |
+| 4 | `column` | param | S6 | c-use | ✅ | Only when first loop body executes |
+| 5 | `total` | S2 | S8 | c-use | ✅ | def-clear path: S2→…→S8 (first iter, n≠null) |
+| 6 | `total` | S2 | S12 | c-use | ✅ | def-clear only when S8 never executes (rowCount=0 or all n null) |
+| 7 | `total` | S8 | S8 | c-use | ✅ | S8 in iter k used by S8 in iter k+1 (multi-row, n≠null) |
+| 8 | `total` | S8 | S12 | c-use | ✅ | last S8 execution to return |
+| 9 | `rowCount` | S3 | S5 | p-use | ✅ | loop condition |
+| 10 | `r` | S4 | S5 | p-use | ✅ | first loop-condition eval |
+| 11 | `r` | S4 | S6 | c-use | ✅ | getValue(r, column) first call |
+| 12 | `r` | S9 | S5 | p-use | ✅ | r++ → next condition eval |
+| 13 | `r` | S9 | S6 | c-use | ✅ | r++ → getValue(r, column) next call |
+| 14 | `n` | S6 | S7 | p-use | ✅ | null-check predicate |
+| 15 | `n` | S6 | S8 | c-use | ✅ | n.doubleValue() when n≠null |
+| — | `rowCount` | S3 | S11 | p-use | ❌ INFEASIBLE | dead loop: 0 > rowCount is always false |
+| — | `r2` | S10 | S11 | p-use | ❌ INFEASIBLE | dead loop body never entered |
 
-> Note: DU-pairs involving the second loop (lines 8–11) are infeasible because `r2 = 0` can never satisfy `r2 > rowCount` when `rowCount ≥ 0`. These 4 pairs are excluded from the denominator.
+**Total feasible DU-pairs: 15**
+
+---
+
+### 2.1.5 DU-Pair Coverage per Test Case
+
+Six representative test cases from `DataUtilitiesMockTest.java` are traced (others are omitted for brevity but covered pairs are subsets of those shown):
+
+| DU# | Pair (DEF→USE) | T1 | T2 | T3 | T4 | T5 | T6 |
+|-----|---------------|----|----|----|----|----|----|
+| 1 | data(param)→S1 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 2 | data(param)→S3 | ✓ | ✓ | ✗ | ✓ | ✓ | ✓ |
+| 3 | data(param)→S6 | ✓ | ✗ | ✗ | ✓ | ✗ | ✓ |
+| 4 | column(param)→S6 | ✓ | ✗ | ✗ | ✓ | ✗ | ✓ |
+| 5 | total(S2)→S8 | ✓ | ✗ | ✗ | ✓ | ✗ | ✓ |
+| 6 | total(S2)→S12 | ✗ | ✓ | ✗ | ✗ | ✓ | ✗ |
+| 7 | total(S8)→S8 | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ |
+| 8 | total(S8)→S12 | ✓ | ✗ | ✗ | ✓ | ✗ | ✓ |
+| 9 | rowCount(S3)→S5 | ✓ | ✓ | ✗ | ✓ | ✓ | ✓ |
+| 10 | r(S4)→S5 | ✓ | ✓ | ✗ | ✓ | ✓ | ✓ |
+| 11 | r(S4)→S6 | ✓ | ✗ | ✗ | ✓ | ✗ | ✓ |
+| 12 | r(S9)→S5 | ✓ | ✗ | ✗ | ✓ | ✗ | ✓ |
+| 13 | r(S9)→S6 | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ |
+| 14 | n(S6)→S7 | ✓ | ✗ | ✗ | ✓ | ✗ | ✓ |
+| 15 | n(S6)→S8 | ✓ | ✗ | ✗ | ✓ | ✗ | ✓ |
+| | **Pairs covered** | **13** | **4** | **1** | **10** | **3** | **12** |
+
+**Test case key:**
+
+| ID | Test Method | Setup |
+|----|-------------|-------|
+| T1 | `calculateColumnTotal_validData_validColumn` | 3 rows, all non-null (1.0, 2.0, 3.0) |
+| T2 | `calculateColumnTotal_invalidColumn_returnsZero` | rowCount = 0 |
+| T3 | `calculateColumnTotal_nullData_throwsNullPointerException` | data = null (throws at S1) |
+| T4 | `calculateColumnTotal_singleRow_returnsCorrectSum` | 1 row, value = 42.0 |
+| T5 | `calculateColumnTotal_emptyTable_returnsZero` | rowCount = 0 |
+| T6 | `calculateColumnTotal_nullValuesInColumn_treatsAsZero` | 3 rows: [5.0, null, 3.0] |
+
+**Pair coverage per test (union across all 6 tests):**
+
+| DU # | Covered by ≥ 1 test? |
+|------|----------------------|
+| 1 | ✅ (T1–T6) |
+| 2 | ✅ (T1, T2, T4, T5, T6) |
+| 3 | ✅ (T1, T4, T6) |
+| 4 | ✅ (T1, T4, T6) |
+| 5 | ✅ (T1, T4, T6) |
+| 6 | ✅ (T2, T5) |
+| 7 | ✅ (T1, T6) |
+| 8 | ✅ (T1, T4, T6) |
+| 9 | ✅ (T1, T2, T4, T5, T6) |
+| 10 | ✅ (T1, T2, T4, T5, T6) |
+| 11 | ✅ (T1, T4, T6) |
+| 12 | ✅ (T1, T4, T6) |
+| 13 | ✅ (T1, T6) |
+| 14 | ✅ (T1, T4, T6) |
+| 15 | ✅ (T1, T4, T6) |
+
+---
+
+### 2.1.6 DU-Pair Coverage Calculation
+
+$$\text{DU-Pair Coverage} = \frac{\text{DU-pairs covered by at least one test}}{\text{Total feasible DU-pairs}} = \frac{15}{15} = \mathbf{100\%}$$
+
+All 15 feasible DU-pairs are covered. The 2 infeasible pairs (in the dead-code second loop) are excluded from both numerator and denominator — they cannot be covered by any test because the loop condition `r2 > rowCount` is a permanent invariant violation (injected bug).
 
 ---
 
 ## 2.2 `Range.contains(double value)`
 
-### Source Code Under Analysis
+### 2.2.1 Annotated Source Code
 
 ```java
 public boolean contains(double value) {
-    if (value < this.lower) {   // line 1
-        return false;            // line 2
-    }
-    if (value > this.upper) {   // line 3
-        return false;            // line 4
-    }
-    return (value >= this.lower && value <= this.upper);  // line 5
+    /* S2 */ if (value < this.lower) {                              // [predicate]
+    /* S3 */     return false;
+             }
+    /* S4 */ if (value > this.upper) {                              // [predicate]
+    /* S5 */     return false;
+             }
+    /* S6 */ return (value >= this.lower && value <= this.upper);
 }
 ```
 
-### Data-Flow Graph
+`this.lower` and `this.upper` are instance fields defined in the constructor. They are treated as definitions available at method entry (equivalent to parameters for intra-procedural DU analysis).
+
+---
+
+### 2.2.2 Control-Flow Graph
+
+**Figure 2** — Control-flow graph for `Range.contains(double value)` (lower section of the same diagram as Figure 1). Entry state and DEF/USE for *value*, *lower*, and *upper* are shown.
+
+![Control-flow diagram for Range.contains](media/control-flow-diagram.png)
+
+*ASCII representation (for reference):*
 
 ```
-[entry: value, this.lower, this.upper]
-     ↓
-[1] value < this.lower?  ──Yes──→ [2] return false
-     │No
-     ↓
-[3] value > this.upper?  ──Yes──→ [4] return false
-     │No
-     ↓
-[5] return (value >= lower && value <= upper)
+  [ENTRY] value (param), this.lower, this.upper (fields)
+        |
+       [S2] value < this.lower?
+       /                      \
+   (true)                   (false)
+     |                         |
+   [S3] return false          [S4] value > this.upper?
+     |                        /                   \
+  [EXIT]                  (true)                (false)
+                            |                     |
+                          [S5] return false     [S6] return (value >= lower
+                            |                        && value <= upper)
+                         [EXIT]                     |
+                                                 [EXIT]
 ```
 
-### Def-Use Sets per Statement
+**CFG Edges:**
+Entry→S2, S2→S3 (true), S2→S4 (false), S3→EXIT, S4→S5 (true), S4→S6 (false), S5→EXIT, S6→EXIT
 
-| Line | Statement | DEF | USE |
-|------|-----------|-----|-----|
-| 1 | `if (value < this.lower)` | — | value, lower |
-| 2 | `return false` | — | — |
-| 3 | `if (value > this.upper)` | — | value, upper |
-| 4 | `return false` | — | — |
-| 5 | `return (value >= lower && value <= upper)` | — | value, lower, upper |
+---
 
-### All DU-Pairs per Variable
+### 2.2.3 Def-Use Sets per Statement
 
-| Variable | DEF | USE (line) | Type |
-|----------|-----|-----------|------|
-| value | param | 1 (p-use) | p-use |
-| value | param | 3 (p-use) | p-use |
-| value | param | 5 (c-use) | c-use |
-| lower | field | 1 (p-use) | p-use |
-| lower | field | 5 (c-use) | c-use |
-| upper | field | 3 (p-use) | p-use |
-| upper | field | 5 (c-use) | c-use |
+| Node | Statement | DEF | USE (c-use) | USE (p-use) |
+|------|-----------|-----|-------------|-------------|
+| Entry | method entry | value, lower, upper (all available) | — | — |
+| S2 | `if (value < this.lower)` | — | — | value, lower |
+| S3 | `return false` | — | — | — |
+| S4 | `if (value > this.upper)` | — | — | value, upper |
+| S5 | `return false` | — | — | — |
+| S6 | `return (value >= lower && value <= upper)` | — | value, lower, upper | — |
 
-Total DU-pairs: **7**
+---
 
-### DU-Pair Coverage per Test Case
+### 2.2.4 All DU-Pairs per Variable
 
-| Test Case | value→1 | value→3 | value→5 | lower→1 | lower→5 | upper→3 | upper→5 |
-|-----------|---------|---------|---------|---------|---------|---------|---------|
-| `contains_valueBelowLower` | ✓ (T) | — | — | ✓ | — | — | — |
-| `contains_valueAboveUpper` | ✓ (F) | ✓ (T) | — | ✓ | — | ✓ | — |
-| `contains_valueInsideRange` | ✓ (F) | ✓ (F) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `contains_valueAtLowerBound` | ✓ (F) | ✓ (F) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `contains_valueAtUpperBound` | ✓ (F) | ✓ (F) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| # | Variable | DEF at | USE at | Use Type | Feasible? |
+|---|----------|--------|--------|----------|-----------|
+| 1 | `value` | param | S2 | p-use | ✅ |
+| 2 | `value` | param | S4 | p-use | ✅ |
+| 3 | `value` | param | S6 | c-use | ✅ |
+| 4 | `lower` | field/ctor | S2 | p-use | ✅ |
+| 5 | `lower` | field/ctor | S6 | c-use | ✅ |
+| 6 | `upper` | field/ctor | S4 | p-use | ✅ |
+| 7 | `upper` | field/ctor | S6 | c-use | ✅ |
 
-### DU-Pair Coverage Calculation
+**Total feasible DU-pairs: 7**
 
-- Total DU-pairs: **7**
-- DU-pairs covered: **7**
-- **DU-Pair Coverage = 7 / 7 = 100%**
+---
+
+### 2.2.5 DU-Pair Coverage per Test Case
+
+All 7 `contains`-related test methods from `RangeTest.java` are traced. The shared fixture is `Range(-1, 1)` (lower = -1, upper = 1).
+
+| DU # | Pair (DEF→USE) | TC1 | TC2 | TC3 | TC4 | TC5 | TC6 | TC7 |
+|------|---------------|-----|-----|-----|-----|-----|-----|-----|
+| 1 | value(param)→S2 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 2 | value(param)→S4 | ✓ | ✓ | ✓ | ✗ | ✓ | ✗ | ✓ |
+| 3 | value(param)→S6 | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| 4 | lower(field)→S2 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 5 | lower(field)→S6 | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| 6 | upper(field)→S4 | ✓ | ✓ | ✓ | ✗ | ✓ | ✗ | ✓ |
+| 7 | upper(field)→S6 | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| | **Pairs covered** | **7** | **7** | **7** | **2** | **4** | **2** | **4** |
+
+**Test case key:**
+
+| ID | Test Method | value | Path taken |
+|----|-------------|-------|-----------|
+| TC1 | `contains_ValueInsideRange_ReturnsTrue` | 0 | S2(F)→S4(F)→S6 |
+| TC2 | `contains_ValueAtLowerBound_ReturnsTrue` | -1 | S2(F)→S4(F)→S6 |
+| TC3 | `contains_ValueAtUpperBound_ReturnsTrue` | 1 | S2(F)→S4(F)→S6 |
+| TC4 | `contains_ValueJustBelowLowerBound_ReturnsFalse` | -1.0001 | S2(T)→S3 |
+| TC5 | `contains_ValueJustAboveUpperBound_ReturnsFalse` | 1.0001 | S2(F)→S4(T)→S5 |
+| TC6 | `contains_ValueWellBelowRange_ReturnsFalse` | -100 | S2(T)→S3 |
+| TC7 | `contains_ValueWellAboveRange_ReturnsFalse` | 100 | S2(F)→S4(T)→S5 |
+
+**Pair coverage per test (union across all 7 tests):**
+
+| DU # | Covered by ≥ 1 test? |
+|------|----------------------|
+| 1 | ✅ (all TCs) |
+| 2 | ✅ (TC1, TC2, TC3, TC5, TC7) |
+| 3 | ✅ (TC1, TC2, TC3) |
+| 4 | ✅ (all TCs) |
+| 5 | ✅ (TC1, TC2, TC3) |
+| 6 | ✅ (TC1, TC2, TC3, TC5, TC7) |
+| 7 | ✅ (TC1, TC2, TC3) |
+
+---
+
+### 2.2.6 DU-Pair Coverage Calculation
+
+$$\text{DU-Pair Coverage} = \frac{\text{DU-pairs covered by at least one test}}{\text{Total feasible DU-pairs}} = \frac{7}{7} = \mathbf{100\%}$$
+
+All 7 DU-pairs are covered. Note that DU-pairs 3, 5, and 7 (involving S6) are only reachable when `value` is inside the range — so only test cases TC1, TC2, TC3 cover them. Test cases TC4–TC7 short-circuit at S3 or S5 and never reach S6, so they leave those three pairs uncovered individually. However, the union of all test cases achieves full coverage.
+
+---
+
+## 2.3 Summary
+
+| Method | Total Feasible DU-Pairs | DU-Pairs Covered | Coverage |
+|--------|------------------------|-----------------|---------|
+| `DataUtilities.calculateColumnTotal(Values2D, int)` | 15 | 15 | **100%** |
+| `Range.contains(double)` | 7 | 7 | **100%** |
+
+The Assignment 2 test suite achieves 100% DU-pair coverage for both analyzed methods. The dead-code second loop in `calculateColumnTotal` contributes 2 infeasible DU-pairs that are correctly excluded — no test can ever cover them, and their exclusion is justified by the fact that `r2 = 0` can never satisfy `r2 > rowCount` for any non-negative `rowCount`.
 
 ---
 
@@ -305,7 +462,7 @@ EclEmma (version bundled with Eclipse 2024-12) was used as the sole coverage too
 
 ### Instruction Coverage — 48.0%
 
-![DataUtilities Instruction Coverage](<3.1 Coverages/DataUtilities Instruction Coverage.png>)
+![DataUtilities Instruction Coverage](media/DataUtilities%20Instruction%20Coverage.png)
 
 **Summary:**
 
@@ -326,7 +483,7 @@ EclEmma (version bundled with Eclipse 2024-12) was used as the sole coverage too
 
 ### Branch Coverage — 35.9%
 
-![DataUtilities Branch Coverage](<3.1 Coverages/DataUtilities Branch Coverage.png>)
+![DataUtilities Branch Coverage](media/DataUtilities%20Branch%20Coverage.png)
 
 **Summary:**
 
@@ -347,7 +504,7 @@ EclEmma (version bundled with Eclipse 2024-12) was used as the sole coverage too
 
 ### Method Coverage — 50.0%
 
-![DataUtilities Method Coverage](<3.1 Coverages/DataUtilities Method Coverage.png>)
+![DataUtilities Method Coverage](media/DataUtilities%20Method%20Coverage.png)
 
 **Summary:**
 
@@ -370,7 +527,7 @@ EclEmma (version bundled with Eclipse 2024-12) was used as the sole coverage too
 
 ### Instruction Coverage — 14.5%
 
-![Range Instruction Coverage](<3.1 Coverages/Range Instruction Coverage.png>)
+![Range Instruction Coverage](media/Range%20Instruction%20Coverage.png)
 
 **Summary:**
 
@@ -405,7 +562,7 @@ EclEmma (version bundled with Eclipse 2024-12) was used as the sole coverage too
 
 ### Branch Coverage — 13.4%
 
-![Range Branch Coverage](<3.1 Coverages/Range Brach Coverage.png>)
+![Range Branch Coverage](media/Range%20Brach%20Coverage.png)
 
 **Summary:**
 
@@ -435,7 +592,7 @@ EclEmma (version bundled with Eclipse 2024-12) was used as the sole coverage too
 
 ### Method Coverage — 26.1%
 
-![Range Method Coverage](<3.1 Coverages/Range Method Coverage.png>)
+![Range Method Coverage](media/Range%20Method%20Coverage.png)
 
 **Summary:**
 
