@@ -208,6 +208,26 @@ public class RangeTest {
     }
 
     // ==================== contains(double value) – 5/5 ====================
+    @Test
+    void constrain_ValueInsideRange_ReturnsSameValue() {
+        Range r = new Range(0.0, 10.0);
+        assertEquals(5.0, r.constrain(5.0), 1e-9,
+            "constrain(5.0) on Range(0,10) should return 5.0");
+    }
+
+    @Test
+    void constrain_ValueBelowLower_ReturnsLower() {
+        Range r = new Range(0.0, 10.0);
+        assertEquals(0.0, r.constrain(-5.0), 1e-9,
+            "constrain(-5.0) on Range(0,10) should return lower bound 0.0");
+    }
+
+    @Test
+    void constrain_ValueAboveUpper_ReturnsUpper() {
+        Range r = new Range(0.0, 10.0);
+        assertEquals(10.0, r.constrain(15.0), 1e-9,
+            "constrain(15.0) on Range(0,10) should return upper bound 10.0");
+    }
 
     // PASS
     /** ECP: value strictly inside range. */
@@ -317,26 +337,7 @@ public class RangeTest {
 
     // ==================== 2.2 constrain(double) ====================
 
-    @Test
-    void constrain_ValueInsideRange_ReturnsSameValue() {
-        Range r = new Range(0.0, 10.0);
-        assertEquals(5.0, r.constrain(5.0), 1e-9,
-            "constrain(5.0) on Range(0,10) should return 5.0");
-    }
 
-    @Test
-    void constrain_ValueBelowLower_ReturnsLower() {
-        Range r = new Range(0.0, 10.0);
-        assertEquals(0.0, r.constrain(-5.0), 1e-9,
-            "constrain(-5.0) on Range(0,10) should return lower bound 0.0");
-    }
-
-    @Test
-    void constrain_ValueAboveUpper_ReturnsUpper() {
-        Range r = new Range(0.0, 10.0);
-        assertEquals(10.0, r.constrain(15.0), 1e-9,
-            "constrain(15.0) on Range(0,10) should return upper bound 10.0");
-    }
 
     // ==================== 2.2 intersects(double, double) ====================
 
